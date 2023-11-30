@@ -13,7 +13,6 @@ describe('Database creation and deletion ', () => {
     beforeEach(() => {
       // 每执行一个 test，都会创建一个临时数据库用于测试
       db = new Database(':memory:');
-      console.log('执行 beforeEach')
     });
     test('create user table', () => {
         db.exec(`
@@ -52,7 +51,11 @@ describe('FOREIGN KEY constraint', () => {
   
     beforeAll(() => {
       db = new Database(':memory:', { verbose: console.log });
-      db.pragma('foreign_keys = ON');
+      /**
+       * 启用外键约束的命令
+       * SQLite 默认情况下是不启用外键约束的，这意味着你可以在表中插入任何值，而不会检查其关联的外键约束。
+       */
+      db.pragma('foreign_keys = ON'); 
       db.exec(`
         CREATE TABLE IF NOT EXISTS departments (
           id INTEGER PRIMARY KEY,
