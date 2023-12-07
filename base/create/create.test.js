@@ -50,7 +50,7 @@ describe('FOREIGN KEY constraint', () => {
     let db;
   
     beforeAll(() => {
-      db = new Database(':memory:', { verbose: console.log });
+      db = new Database(':memory:');
       /**
        * 启用外键约束的命令
        * SQLite 默认情况下是不启用外键约束的，这意味着你可以在表中插入任何值，而不会检查其关联的外键约束。

@@ -16,13 +16,56 @@ beforeAll(() => {
         INSERT INTO students (name, age, grade) VALUES ('Charlie', 18, 12);
         INSERT INTO students (name, age, grade) VALUES ('Alice', 16, 10);
         INSERT INTO students (name, age, grade) VALUES ('Bob', 19, 12);
+
+        CREATE TABLE grades (
+            id INTEGER PRIMARY KEY,
+            student_id INTEGER,
+            subject TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            FOREIGN KEY (student_id) REFERENCES students(id)
+        );
+        INSERT INTO grades (student_id, subject, score) VALUES (1, 'Math', 85);
+        INSERT INTO grades (student_id, subject, score) VALUES (2, 'Math', 78);
+        INSERT INTO grades (student_id, subject, score) VALUES (3, 'Math', 92);
+        INSERT INTO grades (student_id, subject, score) VALUES (4, 'Math', 79);
+        INSERT INTO grades (student_id, subject, score) VALUES (5, 'Math', 88);
+
     `);
 });
 
 afterAll(() => {
     db.close();
 });
-describe('ORDER BY、GROUP BY、LIMIT 和 DISTINCT', ()=> {
+describe('ORDER BY、GROUP BY、LIMIT、 DISTINCT、AND、OR、NOT、Like', ()=> {
+    test('AND',() => {
+        const query = db.prepare(`SELECT name, age,grade FROM students where name='Alice' AND age=18`)
+        const result = query.all()
+        expect(result).toHaveLength(1) // 只命中1条
+        expect(result).toEqual([{name: 'Alice',age:18,grade:12}])
+    })
+    test('OR',() => {
+        const query = db.prepare(`SELECT name, age FROM students WHERE name='Charlie' OR age > 18`)
+        const result = query.all()
+        expect(result).toHaveLength(2) // 命中2条
+        expect(result).toEqual([{name: 'Charlie',age:18}, {name: 'Bob',age:19}])
+    })
+    test('NOT',() => {
+        const query = db.prepare(`SELECT name, age FROM students WHERE name NOT IN('Alice','Charlie')`)
+        const result = query.all()
+        expect(result).toHaveLength(2)
+        expect(result).toEqual([{name: 'Bob',age:17}, {name: 'Bob', age: 19}])
+    })
+    test('Like',() => {
+        // 不区分大小写，查询包含 c 字母的名称
+        const query = db.prepare(`SELECT name FROM students WHERE UPPER(name) LIKE UPPER('%c%')`)
+        const result = query.all()
+        expect(result).toHaveLength(3)
+        expect(result).toEqual([
+            {name: 'Alice'},
+            {name: 'Charlie'},
+            {name: 'Alice'}
+        ])
+    })
 
     test('ORDER BY age ASC', ()=> {
         const query = db.prepare('SELECT age FROM students ORDER BY age ASC')
@@ -70,11 +113,11 @@ describe('ORDER BY、GROUP BY、LIMIT 和 DISTINCT', ()=> {
     });
 })
 
-describe('subquery', ()=> {
+describe('subQuery', ()=> {
 
     /**
      * 1. 通过子查询，先查出排名第二的 age，注意要去重，否则无法通过 order by limit 排序获取正确的值
-     * 2. 然后符合条件的 age 筛选出来
+     * 2. 筛选符合条件的 age
      */
     test('select students with second age', () => {
         const query = db.prepare(`
@@ -90,4 +133,80 @@ describe('subquery', ()=> {
             { name: 'Charlie', age: 18}
         ])
     })
+
+    /**
+     * 查询大于平均年龄的学生信息
+     * 1. 子查询查出平均年龄
+     * 2. 筛选符合条件的数据
+     */
+    
+    test('query the student information of those whose age is greater than the average age', () => {
+        const query = db.prepare(`
+            SELECT name, grade 
+            FROM students 
+            WHERE grade > (
+                SELECT AVG(grade) 
+                FROM students
+            )
+        `)
+        const result = query.all()
+        expect(result).toEqual([
+            {name: 'Alice', grade: 12},
+            {name: 'Charlie', grade: 12},
+            {name: 'Bob', grade: 12},
+        ])
+
+    })
+})
+
+describe('join', () => {
+    test('To query the grades of each student with inner join', () => {
+        const query = db.prepare(`
+            SELECT s.name,s.age, g.subject, g.score
+            FROM students as s
+            INNER JOIN grades as g
+            ON s.id = student_id
+        `)
+        const result = query.all()
+        expect(result).toEqual([
+            {name:'Alice', age: 18, subject: 'Math', score: 85},
+            {name:'Bob', age: 17, subject: 'Math', score: 78},
+            {name:'Charlie', age: 18, subject: 'Math', score: 92},
+            {name:'Alice', age: 16, subject: 'Math', score: 79},
+            {name:'Bob', age: 19, subject: 'Math', score: 88}
+        ])
+    })
+    test('To query the grades of each student with left join', () => {
+        const query = db.prepare(`
+            SELECT s.name,s.age, g.subject, g.score
+            FROM students as s
+            LEFT JOIN grades as g
+            ON s.id = student_id
+        `)
+        const result = query.all()
+        expect(result).toEqual([
+            {name:'Alice', age: 18, subject: 'Math', score: 85},
+            {name:'Bob', age: 17, subject: 'Math', score: 78},
+            {name:'Charlie', age: 18, subject: 'Math', score: 92},
+            {name:'Alice', age: 16, subject: 'Math', score: 79},
+            {name:'Bob', age: 19, subject: 'Math', score: 88}
+        ])
+    })
+    test('To query the grades of each student with right join', () => {
+        const query = db.prepare(`
+            SELECT s.name,s.age, g.subject, g.score
+            FROM students as s
+            RIGHT JOIN grades as g
+            ON s.id = student_id
+        `)
+        const result = query.all()
+        expect(result).toEqual([
+            {name:'Alice', age: 18, subject: 'Math', score: 85},
+            {name:'Bob', age: 17, subject: 'Math', score: 78},
+            {name:'Charlie', age: 18, subject: 'Math', score: 92},
+            {name:'Alice', age: 16, subject: 'Math', score: 79},
+            {name:'Bob', age: 19, subject: 'Math', score: 88}
+        ])
+    })
+
 })
