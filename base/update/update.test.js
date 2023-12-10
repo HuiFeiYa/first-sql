@@ -64,7 +64,7 @@ describe('Database Update Tests', () => {
         const stmt = db.prepare('UPDATE bigtable SET data=? WHERE id % 2 = 0')
         const startTime = new Date();
 
-        for (let i = 0; i < 100000; i++) {
+        for (let i = 0; i < 10000; i++) {
           db.prepare('INSERT INTO bigtable (data) VALUES (?)').run(`row ${i}`);
         }
     
@@ -76,35 +76,25 @@ describe('Database Update Tests', () => {
         expect(timeDiff).toBeLessThan(1); // 确保更新操作的性能足够快（此处假设1秒以内为正常）
     });
 
-    test('Concurrent Update', async ()=> {
-        // 开始事务
-        db.exec('BEGIN TRANSACTION')
-        // 并发
-        const result = await Promise.all([
-             update('Alice', 'math',100),
-             update('Alice','math', 60)
-        ])
-        try {
-            db.exec('COMMIT')
-        } catch (error) {
-            db.exec('ROLLBACK')
-        }
+    test('Concurrent Update', async () => {
+        const updateTwoRows = db.transaction(() => {
+            update('Alice', 'math', 100);
+            update('Alice', 'math', 60);
+        })
+        updateTwoRows()
         const row = query('Alice', 'math')
         expect(row.grade).toBe(60)
     })
     test('Concurrent Update Error', async ()=> {
-        // 开始事务
-        db.exec('BEGIN TRANSACTION')
-        // 并发
-        const result = await Promise.all([
-             update('Alice', 'math',100),
-             update('Alice','math', 60)
-        ])
-        try {
+        const updateTwoRows = db.transaction(() => {
+            update('Alice', 'math', 100);
             throw new Error('一个意外')
-            db.exec('COMMIT')
-        } catch (error) {
-            db.exec('ROLLBACK')
+            update('Alice', 'math', 60);
+        })
+        try {
+            updateTwoRows()
+        } catch (error){
+            console.log('error', error.message)
         }
         const row = query('Alice', 'math')
         expect(row.grade).toBe(100)

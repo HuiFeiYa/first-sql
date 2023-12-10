@@ -6,6 +6,9 @@ test('Database connection', () => {
     expect(db.open).toBeTruthy(); // 检查数据库是否成功打开
     db.close(); // 关闭数据库连接
 });
+/**
+ * 
+ */
 
 describe('Database creation and deletion ', () => {
     let db;
