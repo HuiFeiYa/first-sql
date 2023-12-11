@@ -9,29 +9,31 @@ test('Database connection', () => {
 /**
  * 
  */
+let db;
 
+beforeEach(() => {
+  // 每执行一个 test，都会创建一个临时数据库用于测试
+  db = new Database(':memory:');
+});
 describe('Database creation and deletion ', () => {
-    let db;
-
-    beforeEach(() => {
-      // 每执行一个 test，都会创建一个临时数据库用于测试
-      db = new Database(':memory:');
-    });
     test('create user table', () => {
         db.exec(`
             CREATE TABLE IF NOT EXISTS user (
-                id integer PRIMARY KEY AUTOINCREMENT,
-                name varchar(30),
-                age integer
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name Varchar(30),
+                age INTEGER
             )
         `)
 
         const result = db.pragma('table_info(user)')
         expect(result[0].name).toBe('id')
+        expect(result[0].type).toBe('INTEGER')
         expect(result[1].name).toBe('name')
+        expect(result[1].type).toBe('Varchar(30)')
         expect(result[2].name).toBe('age')
+        expect(result[2].type).toBe('INTEGER')
     })
-
+  
     test('delete shop table', () => {
         db.exec(`
             CREATE TABLE IF NOT EXISTS shop (
